@@ -1,0 +1,226 @@
+import React, { useState, useRef } from "react";
+import { InvokeLLM } from "@/integrations/Core";
+import { Slider } from "@/components/ui/slider";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card } from "@/components/ui/card";
+import { SendHorizontal, RotateCcw, Copy, ThumbsUp, Lightbulb } from "lucide-react";
+import ResponseDisplay from "../components/ResponseDisplay";
+import DepthLevelIndicator from "../components/DepthLevelIndicator";
+import GradientButton from "../components/GradientButton";
+
+export default function Home() {
+  const [prompt, setPrompt] = useState("");
+  const [depthLevel, setDepthLevel] = useState(200);
+  const [showDiagram, setShowDiagram] = useState(false);
+  const [response, setResponse] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const textareaRef = useRef(null);
+
+  const handleSliderChange = (value) => {
+    setDepthLevel(value[0]);
+  };
+
+  const resetForm = () => {
+    setPrompt("");
+    setDepthLevel(200);
+    setShowDiagram(false);
+    setResponse("");
+    setError(null);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
+  const getSystemPrompt = () => {
+    let systemPrompt = "";
+    
+    if (depthLevel <= 100) {
+      systemPrompt = "Explain in simple, beginner-friendly terms. Use straightforward language and avoid technical jargon. Assume no prior knowledge of the subject.";
+    } else if (depthLevel <= 200) {
+      systemPrompt = "Provide a basic explanation that introduces key concepts. Use some technical terms but explain them. Include simple analogies where helpful.";
+    } else if (depthLevel <= 300) {
+      systemPrompt = "Provide a detailed explanation for someone with moderate knowledge. Include technical details, practical applications, and useful analogies.";
+    } else if (depthLevel <= 400) {
+      systemPrompt = "Provide an advanced explanation assuming prior knowledge of the subject. Include technical details, edge cases, and underlying principles.";
+    } else {
+      systemPrompt = "Explain in expert detail, assuming significant knowledge in the field. Include advanced concepts, edge cases, limitations, theoretical foundations, and critical analysis.";
+    }
+    
+    if (showDiagram) {
+      systemPrompt += " Include a textual diagram if it would be helpful for understanding (use plain text formatting for tables, flowcharts, decision trees, or other visual representations).";
+    }
+    
+    return systemPrompt;
+  };
+
+  const handleSubmit = async () => {
+    if (!prompt.trim()) return;
+    
+    setIsLoading(true);
+    setError(null);
+    setResponse("");
+    
+    try {
+      const fullPrompt = `
+System: ${getSystemPrompt()}
+
+User Query: ${prompt}
+
+Respond at depth level: ${depthLevel}/500
+${showDiagram ? "Include a text-based diagram if relevant." : ""}
+`;
+
+      const result = await InvokeLLM({
+        prompt: fullPrompt
+      });
+      
+      setResponse(result);
+    } catch (err) {
+      console.error("Error getting response:", err);
+      setError("Sorry, there was an error processing your request. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && e.ctrlKey) {
+      handleSubmit();
+    }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(response);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-8">
+      <div className="max-w-4xl mx-auto">
+        <header className="mb-12 text-center">
+          <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+            AI Slider
+          </h1>
+          <p className="mt-4 text-slate-600">
+            Control the depth and complexity of AI-generated responses
+          </p>
+        </header>
+
+        <Card className="p-6 shadow-lg border-0 mb-8 bg-white/80 backdrop-blur-sm">
+          <div className="mb-6">
+            <div className="flex items-center mb-2">
+              <Lightbulb className="w-5 h-5 mr-2 text-amber-500" />
+              <Label htmlFor="prompt" className="text-lg font-medium">Your Prompt</Label>
+            </div>
+            <Textarea
+              ref={textareaRef}
+              id="prompt"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Enter any question or topic you'd like to explore..."
+              className="min-h-[120px] text-base resize-y"
+            />
+            <p className="text-xs text-slate-500 mt-2">
+              Press Ctrl+Enter to submit
+            </p>
+          </div>
+
+          <div className="space-y-8">
+            <div>
+              <div className="flex justify-between items-center mb-3">
+                <Label className="text-base font-medium">Depth Level: {depthLevel}</Label>
+                <DepthLevelIndicator level={depthLevel} />
+              </div>
+              
+              <Slider 
+                value={[depthLevel]}
+                min={100}
+                max={500}
+                step={25}
+                onValueChange={handleSliderChange}
+                className="py-4"
+              />
+              
+              <div className="flex justify-between text-sm text-slate-500 mt-1">
+                <span>Beginner</span>
+                <span>Intermediate</span>
+                <span>Expert</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="diagram-mode"
+                  checked={showDiagram}
+                  onCheckedChange={setShowDiagram}
+                />
+                <Label htmlFor="diagram-mode" className="cursor-pointer">
+                  Include diagrams when relevant
+                </Label>
+              </div>
+              
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={resetForm}
+                title="Reset form"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex justify-center">
+              <GradientButton
+                onClick={handleSubmit}
+                disabled={isLoading || prompt.trim() === ""}
+                isLoading={isLoading}
+                icon={<SendHorizontal className="w-5 h-5" />}
+              >
+                Generate Response
+              </GradientButton>
+            </div>
+          </div>
+        </Card>
+
+        {(response || isLoading || error) && (
+          <Card className="p-6 shadow-lg border-0 mb-8 bg-white/80 backdrop-blur-sm">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-slate-800">Response</h2>
+              {response && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={copyToClipboard}
+                    className="flex items-center gap-1"
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copy
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="text-green-600"
+                  >
+                    <ThumbsUp className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+            
+            <ResponseDisplay
+              response={response}
+              isLoading={isLoading}
+              error={error}
+            />
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
