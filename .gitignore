@@ -26,4 +26,6 @@ yarn-error.log*
 *.pem
 coverage/
 .idea/
-.vscode/
+.vscode/# Azure Static Web App config
+staticwebapp.config.json
+.azure/
