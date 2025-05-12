@@ -26,7 +26,6 @@ export default function Home() {
   };
 
   const handleSliderChange = (value) => {
-    // Round to nearest hundred, with 500 being the maximum
     let rounded = Math.min(Math.round(value[0] / 100) * 100, 500);
     setDepthLevel(rounded);
   };
