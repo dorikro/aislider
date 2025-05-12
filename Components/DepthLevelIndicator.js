@@ -3,21 +3,30 @@ import React from "react";
 export default function DepthLevelIndicator({ level }) {
   let color, label;
   
-  if (level <= 100) {
-    color = "bg-green-500";
-    label = "Beginner";
-  } else if (level <= 200) {
-    color = "bg-emerald-500";
-    label = "Basic";
-  } else if (level <= 300) {
-    color = "bg-blue-500";
-    label = "Intermediate";
-  } else if (level <= 400) {
-    color = "bg-purple-500";
-    label = "Advanced";
-  } else {
-    color = "bg-violet-600";
-    label = "Expert";
+  switch (level) {
+    case 100:
+      color = "bg-green-500";
+      label = "Beginner";
+      break;
+    case 200:
+      color = "bg-blue-500";
+      label = "Intermediate";
+      break;
+    case 300:
+      color = "bg-orange-500";
+      label = "Advanced";
+      break;
+    case 400:
+      color = "bg-purple-600";
+      label = "Expert";
+      break;
+    case 500:
+      color = "bg-red-600";
+      label = "Extreme";
+      break;
+    default:
+      color = "bg-gray-500";
+      label = "Custom";
   }
   
   return (

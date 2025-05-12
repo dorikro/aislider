@@ -3,12 +3,10 @@ import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import TextDepthControl from "./TextDepthControl";
-import { diffWords } from 'diff';
 
 export default function ResponseDisplay({ response, isLoading, error, onUpdateResponse }) {
   const [selectedText, setSelectedText] = useState("");
   const [selection, setSelection] = useState(null);
-  const [diffChanges, setDiffChanges] = useState(null);
   const contentRef = useRef(null);
 
   const handleTextSelection = useCallback(() => {
@@ -29,24 +27,9 @@ export default function ResponseDisplay({ response, isLoading, error, onUpdateRe
   }, []);
 
   const handleUpdateText = async (newText, originalText) => {
-    const changes = diffWords(originalText, newText);
-    setDiffChanges(changes);
-
-    // Create a temporary div to hold the original content
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = response;
-
-    // Find and replace the selected text with the marked-up version
-    const markedText = changes.map(part => {
-      if (part.added) {
-        return `<span class="bg-green-100 text-green-900">${part.value}</span>`;
-      }
-      if (part.removed) {
-        return `<span class="bg-red-100 text-red-900 line-through">${part.value}</span>`;
-      }
-      return part.value;
-    }).join('');
-
+    // Create a simple visual indication of the changes
+    const markedText = `<span class="bg-green-100 text-green-900">${newText}</span>`;
+    
     onUpdateResponse(prev => {
       return prev.replace(originalText, markedText);
     });
