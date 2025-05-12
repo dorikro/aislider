@@ -1,9 +1,60 @@
-import React from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import TextDepthControl from "./TextDepthControl";
+import { diffWords } from 'diff';
 
-export default function ResponseDisplay({ response, isLoading, error }) {
+export default function ResponseDisplay({ response, isLoading, error, onUpdateResponse }) {
+  const [selectedText, setSelectedText] = useState("");
+  const [selection, setSelection] = useState(null);
+  const [diffChanges, setDiffChanges] = useState(null);
+  const contentRef = useRef(null);
+
+  const handleTextSelection = useCallback(() => {
+    const selection = window.getSelection();
+    const text = selection.toString().trim();
+
+    if (text) {
+      const range = selection.getRangeAt(0);
+      setSelectedText(text);
+      setSelection({
+        range,
+        rect: range.getBoundingClientRect()
+      });
+    } else {
+      setSelectedText("");
+      setSelection(null);
+    }
+  }, []);
+
+  const handleUpdateText = async (newText, originalText) => {
+    const changes = diffWords(originalText, newText);
+    setDiffChanges(changes);
+
+    // Create a temporary div to hold the original content
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = response;
+
+    // Find and replace the selected text with the marked-up version
+    const markedText = changes.map(part => {
+      if (part.added) {
+        return `<span class="bg-green-100 text-green-900">${part.value}</span>`;
+      }
+      if (part.removed) {
+        return `<span class="bg-red-100 text-red-900 line-through">${part.value}</span>`;
+      }
+      return part.value;
+    }).join('');
+
+    onUpdateResponse(prev => {
+      return prev.replace(originalText, markedText);
+    });
+
+    setSelectedText("");
+    setSelection(null);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -12,9 +63,6 @@ export default function ResponseDisplay({ response, isLoading, error }) {
         <Skeleton className="h-6 w-5/6" />
         <Skeleton className="h-6 w-full" />
         <Skeleton className="h-6 w-2/3" />
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-6 w-3/4" />
-        <Skeleton className="h-6 w-full" />
       </div>
     );
   }
@@ -28,11 +76,8 @@ export default function ResponseDisplay({ response, isLoading, error }) {
     );
   }
 
-  if (!response) {
-    return null;
-  }
+  if (!response) return null;
 
-  // Format the response with proper whitespace preservation and formatting
   const formatResponse = (text) => {
     // Replace code blocks with styled blocks
     const codeBlockRegex = /```([\s\S]*?)```/g;
@@ -47,14 +92,29 @@ export default function ResponseDisplay({ response, isLoading, error }) {
       '<code class="bg-slate-100 px-1.5 py-0.5 rounded text-sm font-mono">$1</code>'
     );
 
-    // Convert newlines to <br> tags
     return textWithFormattedInlineCode.replace(/\n/g, '<br>');
   };
 
   return (
-    <div 
-      className="prose max-w-none text-slate-700"
-      dangerouslySetInnerHTML={{ __html: formatResponse(response) }}
-    />
+    <div className="relative">
+      <div 
+        ref={contentRef}
+        className="prose max-w-none text-slate-700"
+        onMouseUp={handleTextSelection}
+        dangerouslySetInnerHTML={{ __html: formatResponse(response) }}
+      />
+      
+      {selectedText && selection && (
+        <TextDepthControl
+          text={selectedText}
+          selection={selection}
+          onClose={() => {
+            setSelectedText("");
+            setSelection(null);
+          }}
+          onUpdateText={handleUpdateText}
+        />
+      )}
+    </div>
   );
 }
