@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from "react";
 import { InvokeLLM } from "@/integrations/Core";
 import { Slider } from "@/components/ui/slider";
@@ -20,8 +21,14 @@ export default function Home() {
   const [error, setError] = useState(null);
   const textareaRef = useRef(null);
 
+  const handleResponseUpdate = (updateFn) => {
+    setResponse(updateFn(response));
+  };
+
   const handleSliderChange = (value) => {
-    setDepthLevel(value[0]);
+    // Round to nearest hundred, with 500 being the maximum
+    let rounded = Math.min(Math.round(value[0] / 100) * 100, 500);
+    setDepthLevel(rounded);
   };
 
   const resetForm = () => {
@@ -140,7 +147,7 @@ ${showDiagram ? "Include a text-based diagram if relevant." : ""}
                 value={[depthLevel]}
                 min={100}
                 max={500}
-                step={25}
+                step={100}
                 onValueChange={handleSliderChange}
                 className="py-4"
               />
@@ -217,6 +224,7 @@ ${showDiagram ? "Include a text-based diagram if relevant." : ""}
               response={response}
               isLoading={isLoading}
               error={error}
+              onUpdateResponse={handleResponseUpdate}
             />
           </Card>
         )}
